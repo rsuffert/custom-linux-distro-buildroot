@@ -2,7 +2,7 @@ import time
 from http.server import BaseHTTPRequestHandler,HTTPServer
 
 
-HOST_NAME = '' # !!!REMEMBER TO CHANGE THIS!!!
+HOST_NAME = '192.168.1.10' # !!!REMEMBER TO CHANGE THIS!!!
 PORT_NUMBER = 8000
 
 
@@ -21,7 +21,7 @@ class MyHandler(BaseHTTPRequestHandler):
             f"<p>Total and used RAM: {get_total_and_used_ram()}</p>"
             f"<p>System version: {get_system_version()}</p>"
             f"<p>Processes in execution: {', '.join(get_processes_in_execution())}</p>"
-            f"<p>Disk units with capacity: {', '.join(get_disk_unities_with_capacity())}</p>"
+            f"<p>Disk units with capacity: {', '.join(get_disk_units_with_capacity())}</p>"
             f"<p>USB devices with port: {', '.join(get_usb_devices_with_port())}</p>"
             f"<p>Network adapters with IP: {', '.join(get_network_adapters_with_ip())}</p>"
             "</body></html>"
