@@ -1,3 +1,4 @@
+import os
 import time
 from http.server import BaseHTTPRequestHandler,HTTPServer
 
@@ -39,7 +40,23 @@ def get_system_uptime_seconds() -> str: # Ricardo
 
 def get_processor_model_and_velocity() -> str: # Gustavo
     # /proc/cpuinfo
-    return ""
+    cpu_info={}
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line.startswith('model name'):
+                    #pega o modelo separa depois do :
+                    key, value = line.strip().split(':', 1)
+                    cpu_info['model'] = value.strip()
+                elif line.startswith('cpu MHz'):
+                    #pega a velocidade separa depois do :
+                    key, value = line.strip().split(':', 1)
+                    cpu_info['speed'] = value.strip()
+    except FileNotFoundError:
+        print("/proc/cpuinfo not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return f"{cpu_info['model']} || {cpu_info['speed']} MHz"
 
 def get_percentage_processor_in_use() -> float: # Ricardo
     # /proc/stat
@@ -47,7 +64,30 @@ def get_percentage_processor_in_use() -> float: # Ricardo
 
 def get_total_and_used_ram() -> str: # Gustavo
     # /proc/meminfo
-    return ""
+    mem_info = {}
+    
+    try:
+        with open('/proc/meminfo', 'r') as f:
+            for line in f:
+                if line.startswith('MemTotal'):
+                    key, value = line.strip().split(':', 1)
+                    mem_info['MemTotal'] = int(value.strip().split()[0])
+                    #memAvailable pois indica a quantidade livre, levando em conta a memoria em caching e buffering que pode ser liberado 
+                elif line.startswith('MemAvailable'):
+                    key, value = line.strip().split(':', 1)
+                    mem_info['MemAvailable'] = int(value.strip().split()[0])
+    except FileNotFoundError:
+        return "/proc/meminfo not found."
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+    if 'MemTotal' in mem_info and 'MemAvailable' in mem_info:
+        used_memory = mem_info['MemTotal'] - mem_info['MemAvailable']
+        used_memory= used_memory/1_048_576
+        total_mem=mem_info['MemTotal']/1_048_576
+        return f"{total_mem:.2f} gB || {used_memory:.2f} gB"
+    else:
+        return "Memory information is incomplete."
 
 def get_system_version() -> str: # Ricardo
     # /proc/version
@@ -64,7 +104,21 @@ def get_disk_units_with_capacity() -> list: # Balejos
 
 def get_usb_devices_with_port() -> list: # Gustavo
     # /sys/bus/usb/devices
-    return []
+    usb_path = '/sys/bus/usb/devices'
+    
+    try:
+
+        usb_entries = os.listdir(usb_path)
+        
+        #filtra os diretorios
+        dir = [entry for entry in usb_entries if os.path.isdir(os.path.join(usb_path, entry))]
+        
+        return dir
+    except FileNotFoundError:
+        return ["/sys/bus/usb/devices  not found."]
+    except Exception as e:
+        return [f"An error occurred: {e}"]
+    
 
 def get_network_adapters_with_ip() -> list: # Balejos
     #/proc/net/route
