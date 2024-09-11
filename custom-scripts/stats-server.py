@@ -55,20 +55,20 @@ def get_system_version() -> str:
 
 def get_processes_in_execution() -> list:
     # ler os subdiretorios de /proc e capturar apenas aqueles com valores numricos (expressao regular ^[0-9]+$)
-    return ""
+    return []
 
 def get_disk_units_with_capacity() -> list:
-    # /proc/partitions (para listar as unidades de disco)
-    # sys/block/[device]/size (para o tamamnho em blocos - 1 bloco = 512 bytes)
-    return ""
+    # /sys/block para listar as unidades de disco
+    # /sys/block/[device]/size para listar o tamanho da unidade de disco em blocos (1 bloco = 512 bytes)
+    return []
 
 def get_usb_devices_with_port() -> list:
     # /sys/bus/usb/devices
-    return ""
+    return []
 
 def get_network_adapters_with_ip() -> list:
     #/proc/net/route
-    return ""
+    return []
 
 if __name__ == '__main__':
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER), MyHandler)
