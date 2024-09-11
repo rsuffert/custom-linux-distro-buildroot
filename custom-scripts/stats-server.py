@@ -29,44 +29,44 @@ class MyHandler(BaseHTTPRequestHandler):
         s.wfile.write(response.encode())
 
 
-def get_system_datetime() -> str:
+def get_system_datetime() -> str: # Ricardo
     #/proc/driver/rtc
     return ""
 
-def get_system_uptime_seconds() -> str:
+def get_system_uptime_seconds() -> str: # Ricardo
     # /proc/uptime
     return ""
 
-def get_processor_model_and_velocity() -> str:
+def get_processor_model_and_velocity() -> str: # Gustavo
     # /proc/cpuinfo
     return ""
 
-def get_percentage_processor_in_use() -> float:
+def get_percentage_processor_in_use() -> float: # Ricardo
     # /proc/stat
     return 0.0
 
-def get_total_and_used_ram() -> str:
+def get_total_and_used_ram() -> str: # Gustavo
     # /proc/meminfo
     return ""
 
-def get_system_version() -> str:
+def get_system_version() -> str: # Ricardo
     # /proc/version
     return ""
 
-def get_processes_in_execution() -> list:
+def get_processes_in_execution() -> list: # Balejos
     # ler os subdiretorios de /proc e capturar apenas aqueles com valores numricos (expressao regular ^[0-9]+$)
     return []
 
-def get_disk_units_with_capacity() -> list:
+def get_disk_units_with_capacity() -> list: # Balejos
     # /sys/block para listar as unidades de disco
     # /sys/block/[device]/size para listar o tamanho da unidade de disco em blocos (1 bloco = 512 bytes)
     return []
 
-def get_usb_devices_with_port() -> list:
+def get_usb_devices_with_port() -> list: # Gustavo
     # /sys/bus/usb/devices
     return []
 
-def get_network_adapters_with_ip() -> list:
+def get_network_adapters_with_ip() -> list: # Balejos
     #/proc/net/route
     return []
 
