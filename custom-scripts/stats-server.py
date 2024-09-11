@@ -1,6 +1,7 @@
 import os
 import time
 from http.server import BaseHTTPRequestHandler,HTTPServer
+import re
 
 
 HOST_NAME = '192.168.1.10' # !!!REMEMBER TO CHANGE THIS!!!
@@ -18,7 +19,7 @@ class MyHandler(BaseHTTPRequestHandler):
             f"<p>System date & time: {get_system_datetime()}</p>"
             f"<p>System uptime: {get_system_uptime_seconds()} seconds</p>"
             f"<p>Processor model & velocity: {get_processor_model_and_velocity()}</p>"
-            f"<p>Percentage of processor in use: {get_percentage_processor_in_use() * 100:.2f}%</p>"
+            f"<p>Percentage of processor in use: {get_percentage_processor_in_use() :.2f}%</p>"
             f"<p>Total and used RAM: {get_total_and_used_ram()}</p>"
             f"<p>System version: {get_system_version()}</p>"
             f"<p>Processes in execution: {', '.join(get_processes_in_execution())}</p>"
@@ -31,12 +32,17 @@ class MyHandler(BaseHTTPRequestHandler):
 
 
 def get_system_datetime() -> str: # Ricardo
-    #/proc/driver/rtc
-    return ""
+    with open("/proc/driver/rtc", 'r') as f:
+        content = f.read()
+    rtc_time = re.search(r'rtc_time\s*:\s*(\d+:\d+:\d+)', content).group(1)
+    rtc_date = re.search(r'rtc_date\s*:\s*(\d+-\d+-\d+)', content).group(1)
+    return f"{rtc_date}, {rtc_time}"
 
 def get_system_uptime_seconds() -> str: # Ricardo
-    # /proc/uptime
-    return ""
+    with open("/proc/uptime", 'r') as f:
+        content = f.read()
+    uptime = re.split(r'\s+', content)[0]
+    return f"{uptime}"
 
 def get_processor_model_and_velocity() -> str: # Gustavo
     # /proc/cpuinfo
@@ -59,8 +65,29 @@ def get_processor_model_and_velocity() -> str: # Gustavo
     return f"{cpu_info['model']} || {cpu_info['speed']} MHz"
 
 def get_percentage_processor_in_use() -> float: # Ricardo
-    # /proc/stat
-    return 0.0
+    # read two snapshots of CPU stats (1 second of difference)
+    with open("/proc/stat") as f:
+        content1 = f.read()
+    time.sleep(1)
+    with open("/proc/stat") as f:
+        content2 = f.read()
+    
+    # process first snapshot
+    lines1 = content1.split("\n")
+    first_line_split1 = lines1[0].split()[1:]
+    total1 = sum(map(float, first_line_split1))
+    idle1 = float(first_line_split1[3])
+
+    # process second snapshot
+    lines2 = content2.split("\n")
+    first_line_split2 = lines2[0].split()[1:]
+    total2 = sum(map(float, first_line_split2))
+    idle2 = float(first_line_split2[3])
+
+    #calculate CPU usage percentage
+    total_diff = total2 - total1
+    idle_diff = idle2 - idle1
+    return 100 * (1 - (idle_diff/total_diff))
 
 def get_total_and_used_ram() -> str: # Gustavo
     # /proc/meminfo
@@ -91,7 +118,9 @@ def get_total_and_used_ram() -> str: # Gustavo
 
 def get_system_version() -> str: # Ricardo
     # /proc/version
-    return ""
+    with open("/proc/version") as f:
+        content = f.read()
+    return content
 
 def get_processes_in_execution() -> list: # Balejos
     # ler os subdiretorios de /proc e capturar apenas aqueles com valores numricos (expressao regular ^[0-9]+$)
