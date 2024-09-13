@@ -124,12 +124,25 @@ def get_system_version() -> str: # Ricardo
 
 def get_processes_in_execution() -> list: # Balejos
     # ler os subdiretorios de /proc e capturar apenas aqueles com valores numricos (expressao regular ^[0-9]+$)
-    return []
+    sub_dir = []
+    for pid in os.listdir ('/proc'):
+        if pid.isnumeric():
+            sub_dir.append(pid)
+    return sub_dir
 
 def get_disk_units_with_capacity() -> list: # Balejos
     # /sys/block para listar as unidades de disco
     # /sys/block/[device]/size para listar o tamanho da unidade de disco em blocos (1 bloco = 512 bytes)
-    return []
+    disk_units = []
+    if os.path.exists('/sys/block'): 
+        for device in os.listdir('/sys/block'): 
+            size_path = os.path.join ('/sys/block', device, 'size') 
+            if os.path.exists(size_path): 
+                with open (size_path, 'r') as f: 
+                    size_in_blocks = int(f.read().strip()) 
+                    size_in_bytes = size_in_blocks * 512 
+                    disk_units.append (f"{device}: {size_in_bytes / (1024 ** 3):.2f} GB")
+    return disk_units
 
 def get_usb_devices_with_port() -> list: # Gustavo
     # /sys/bus/usb/devices
@@ -151,7 +164,8 @@ def get_usb_devices_with_port() -> list: # Gustavo
 
 def get_network_adapters_with_ip() -> list: # Balejos
     #/proc/net/route
-    return []
+    with open ('/proc/net/route', 'r') as file:	content = file.readlines()
+    return content
 
 if __name__ == '__main__':
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER), MyHandler)
