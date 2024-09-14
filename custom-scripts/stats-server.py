@@ -16,16 +16,16 @@ class MyHandler(BaseHTTPRequestHandler):
         s.end_headers()
         response = (
             "<html><head><title>System stats</title></head><body>"
-            f"<p>System date & time: {get_system_datetime()}</p>"
-            f"<p>System uptime: {get_system_uptime_seconds()} seconds</p>"
-            f"<p>Processor model & velocity: {get_processor_model_and_velocity()}</p>"
-            f"<p>Percentage of processor in use: {get_percentage_processor_in_use() :.2f}%</p>"
-            f"<p>Total and used RAM: {get_total_and_used_ram()}</p>"
-            f"<p>System version: {get_system_version()}</p>"
-            f"<p>Processes in execution: {', '.join(get_processes_in_execution())}</p>"
-            f"<p>Disk units with capacity: {', '.join(get_disk_units_with_capacity())}</p>"
-            f"<p>USB devices with port: {', '.join(get_usb_devices_with_port())}</p>"
-            f"<p>Network adapters with IP: {', '.join(get_network_adapters_with_ip())}</p>"
+            f"<p>1. System date & time: {get_system_datetime()}</p>"
+            f"<p>2. System uptime: {get_system_uptime_seconds()} seconds</p>"
+            f"<p>3. Processor model & velocity: {get_processor_model_and_velocity()}</p>"
+            f"<p>4. Percentage of processor in use: {get_percentage_processor_in_use() :.2f}%</p>"
+            f"<p>5. Total and used RAM: {get_total_and_used_ram()}</p>"
+            f"<p>6. System version: {get_system_version()}</p>"
+            f"<p>7. Processes in execution: {', '.join(get_processes_in_execution())}</p>"
+            f"<p>8. Disk units with capacity: {', '.join(get_disk_units_with_capacity())}</p>"
+            f"<p>9. USB devices with port: {', '.join(get_usb_devices_with_port())}</p>"
+            f"<p>10. Network adapters with IP: <br/> {get_network_adapters_with_ip()}</p>"
             "</body></html>"
         )
         s.wfile.write(response.encode())
@@ -46,23 +46,17 @@ def get_system_uptime_seconds() -> str: # Ricardo
 
 def get_processor_model_and_velocity() -> str: # Gustavo
     # /proc/cpuinfo
-    cpu_info={}
-    try:
-        with open('/proc/cpuinfo', 'r') as f:
-            for line in f:
-                if line.startswith('model name'):
-                    #pega o modelo separa depois do :
-                    key, value = line.strip().split(':', 1)
-                    cpu_info['model'] = value.strip()
-                elif line.startswith('cpu MHz'):
-                    #pega a velocidade separa depois do :
-                    key, value = line.strip().split(':', 1)
-                    cpu_info['speed'] = value.strip()
-    except FileNotFoundError:
-        print("/proc/cpuinfo not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    return f"{cpu_info['model']} || {cpu_info['speed']} MHz"
+    with open('/proc/cpuinfo', 'r') as f:
+        model = re.search(r'model name\s*:\s*(.*)', f.read()).group(1) # assumes it's the same for all cores
+
+    BASE_DIR = "/sys/devices/system/cpu"
+    pattern = re.compile(r'^cpu.*\d$')
+    max_freqs = []
+    for dir in os.listdir(BASE_DIR):
+        if not pattern.match(dir): continue
+        with open(os.path.join(BASE_DIR, dir, "cpufreq/cpuinfo_max_freq")) as f:
+            max_freqs.append(float(f.read())/(10**6)) # convert to GHz
+    return f"{model} (highest core maximum frequency is {max(max_freqs)} GHz)"
 
 def get_percentage_processor_in_use() -> float: # Ricardo
     # read two snapshots of CPU stats (1 second of difference)
@@ -112,7 +106,7 @@ def get_total_and_used_ram() -> str: # Gustavo
         used_memory = mem_info['MemTotal'] - mem_info['MemAvailable']
         used_memory= used_memory/1_048_576
         total_mem=mem_info['MemTotal']/1_048_576
-        return f"{total_mem:.2f} gB || {used_memory:.2f} gB"
+        return f"{total_mem:.2f} GB || {used_memory:.2f} GB"
     else:
         return "Memory information is incomplete."
 
@@ -125,9 +119,13 @@ def get_system_version() -> str: # Ricardo
 def get_processes_in_execution() -> list: # Balejos
     # ler os subdiretorios de /proc e capturar apenas aqueles com valores numricos (expressao regular ^[0-9]+$)
     sub_dir = []
-    for pid in os.listdir ('/proc'):
+    for pid in os.listdir('/proc'):
         if pid.isnumeric():
-            sub_dir.append(pid)
+            try:
+                with open(f'/proc/{pid}/comm') as f: name = f.read().strip()
+                sub_dir.append(f"{pid} ({name})")
+            except FileNotFoundError:
+                pass # process is no longer running
     return sub_dir
 
 def get_disk_units_with_capacity() -> list: # Balejos
@@ -162,10 +160,10 @@ def get_usb_devices_with_port() -> list: # Gustavo
         return [f"An error occurred: {e}"]
     
 
-def get_network_adapters_with_ip() -> list: # Balejos
-    #/proc/net/route
-    with open ('/proc/net/route', 'r') as file:	content = file.readlines()
-    return content
+def get_network_adapters_with_ip() -> str:
+    with open('/proc/net/route', 'r') as file:
+        content = file.read()
+    return content.replace('\n', '<br/>')
 
 if __name__ == '__main__':
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER), MyHandler)
