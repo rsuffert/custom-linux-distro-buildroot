@@ -46,9 +46,10 @@ def get_system_uptime_seconds() -> str: # Ricardo
 
 def get_processor_model_and_velocity() -> str: # Gustavo
     # /proc/cpuinfo
+    """
     with open('/proc/cpuinfo', 'r') as f:
         model = re.search(r'model name\s*:\s*(.*)', f.read()).group(1) # assumes it's the same for all cores
-
+    
     BASE_DIR = "/sys/devices/system/cpu"
     pattern = re.compile(r'^cpu.*\d$')
     max_freqs = []
@@ -57,6 +58,14 @@ def get_processor_model_and_velocity() -> str: # Gustavo
         with open(os.path.join(BASE_DIR, dir, "cpufreq/cpuinfo_max_freq")) as f:
             max_freqs.append(float(f.read())/(10**6)) # convert to GHz
     return f"{model} (highest core maximum frequency is {max(max_freqs)} GHz)"
+    """
+
+    with open('/proc/cpuinfo') as f:
+        content = f.read()
+    model = re.search(r'model name\s*:\s*(.*)', content).group(1) # assumes it's the same for all cores
+    matches = re.findall(r'cpu MHz\s*:\s*(.*)', content)
+    freqs = [float(m) for m in matches]
+    return f"{model} ({max(freqs)/1000:.2f} GHz)"
 
 def get_percentage_processor_in_use() -> float: # Ricardo
     # read two snapshots of CPU stats (1 second of difference)
