@@ -63,9 +63,7 @@ def get_processor_model_and_velocity() -> str: # Gustavo
     with open('/proc/cpuinfo') as f:
         content = f.read()
     model = re.search(r'model name\s*:\s*(.*)', content).group(1) # assumes it's the same for all cores
-    matches = re.findall(r'cpu MHz\s*:\s*(.*)', content)
-    freqs = [float(m) for m in matches]
-    return f"{model} ({max(freqs)/1000:.2f} GHz)"
+    return model
 
 def get_percentage_processor_in_use() -> float: # Ricardo
     # read two snapshots of CPU stats (1 second of difference)
