@@ -1,0 +1,1 @@
+cmd_/workspaces/labsisop-buildroot-202402/modules/simple_driver/built-in.o :=  rm -f /workspaces/labsisop-buildroot-202402/modules/simple_driver/built-in.o; ar rcSTPD /workspaces/labsisop-buildroot-202402/modules/simple_driver/built-in.o
