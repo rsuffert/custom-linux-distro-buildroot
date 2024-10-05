@@ -158,7 +158,7 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     copy_to_user(buffer, msg->message, msg->size); // copy message to user space
 
     if (error_count != 0) {
-        printk(KERN_INFO "Simple Driver: failed to send %d characters to the user\n", error_count);
+        printk(KERN_ALERT "Simple Driver: failed to send %d characters to the user\n", error_count);
         return -EFAULT;
     }
 
@@ -187,7 +187,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
         return -ENOMEM;
     }
 
-    // Allocate memory for the message string and copy it to the user space
+    // Allocate memory for the message string and copy it from user space
     msg->message = kmalloc(len, GFP_KERNEL);
     if (!msg->message) {
         printk(KERN_ALERT "Simple Driver: failed to allocate memory for message content\n");
@@ -200,9 +200,8 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
         kfree(msg);
         return -EFAULT;
     }
-
-    msg->size = len;
     
+    msg->size = len;
     list_add_tail(&msg->list, &message_list);
 
     printk(KERN_INFO "Simple Driver: received %zu characters from the user\n", len);
