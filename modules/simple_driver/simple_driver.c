@@ -12,6 +12,8 @@
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
 #include <linux/uaccess.h>
+#include <linux/slab.h>           // For kmalloc and kfree
+#include <linux/list.h>           // For linked list functions
 
 #define  DEVICE_NAME "simple_driver" ///< The device will appear at /dev/simple_driver using this value
 #define  CLASS_NAME  "simple_class"        ///< The device class -- this is a character device driver
@@ -22,11 +24,19 @@ MODULE_DESCRIPTION("A generic Linux char driver.");  ///< The description -- see
 MODULE_VERSION("0.2");            ///< A version number to inform users
 
 static int    majorNumber;                  ///< Stores the device number -- determined automatically
-static char   message[256] = {0};           ///< Memory for the string that is passed from userspace
-static short  size_of_message;              ///< Used to remember the size of the string stored
 static int    numberOpens = 0;              ///< Counts the number of times the device is opened
 static struct class *charClass  = NULL; ///< The device-driver class struct pointer
 static struct device *charDevice = NULL; ///< The device-driver device struct pointer
+
+// Estrutura para armazenar mensagens na lista encadeada
+struct message_node {
+    char *message;
+    size_t size;
+    struct list_head list;   // List node structure
+};
+
+// Cabeça da lista encadeada
+static LIST_HEAD(message_list);
 
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
@@ -96,6 +106,15 @@ static int __init simple_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit simple_exit(void){
+	struct message_node *msg, *tmp;
+
+    // Wipe out the linked list
+    list_for_each_entry_safe(msg, tmp, &message_list, list) {
+        list_del(&msg->list);
+        kfree(msg->message);
+        kfree(msg);
+    }
+
 	device_destroy(charClass, MKDEV(majorNumber, 0));     // remove the device
 	class_unregister(charClass);                          // unregister the device class
 	class_destroy(charClass);                             // remove the device class
@@ -125,19 +144,28 @@ static int dev_open(struct inode *inodep, struct file *filep){
  *  @param offset The offset if required
  */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
-	int error_count = 0;
-   
-	// copy_to_user has the format ( * to, *from, size) and returns 0 on success
-	error_count = copy_to_user(buffer, message, size_of_message);
+    struct message_node *msg;
+    int error_count;
+    
+    if (list_empty(&message_list)) {
+        printk(KERN_INFO "Simple Driver: no messages to read\n");
+        return 0;
+    }
 
-	if (error_count==0){            // if true then have success
-		printk(KERN_INFO "Simple Driver: sent %d characters to the user\n", size_of_message);
-		return (size_of_message=0);  // clear the position to the start and return 0
-	}
-	else {
-		printk(KERN_INFO "Simple Driver: failed to send %d characters to the user\n", error_count);
-		return -EFAULT;              // Failed -- return a bad address message (i.e. -14)
-	}
+    msg = list_first_entry(&message_list, struct message_node, list);
+    list_del(&msg->list);
+
+    copy_to_user(buffer, msg->message, msg->size); // copy message to user space
+
+    if (error_count != 0) {
+        printk(KERN_INFO "Simple Driver: failed to send %d characters to the user\n", error_count);
+        return -EFAULT;
+    }
+
+    printk(KERN_INFO "Simple Driver: sent %zu characters to the user\n", msg->size);
+    kfree(msg->message);
+    kfree(msg);
+    return msg->size;
 }
 
 
@@ -150,18 +178,35 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
-	if (len < sizeof(message)){
-		sprintf(message, "%s(%zu letters)", buffer, len);   // appending received string with its length
-		size_of_message = strlen(message);                 // store the length of the stored message
-		printk(KERN_INFO "Simple Driver: received %zu characters from the user\n", len);
-		
-		return len;
-	}else{
-		sprintf(message, "(0 letters)");
-		printk(KERN_INFO "Simple Driver: too many characters to deal with\n", len);
-		
-		return 0;
-	}
+    struct message_node *msg;
+
+    // Allocate memory for the new message_node struct instance
+    msg = kmalloc(sizeof(*msg), GFP_KERNEL);
+    if (!msg) {
+        printk(KERN_ALERT "Simple Driver: failed to allocate memory for new message\n");
+        return -ENOMEM;
+    }
+
+    // Allocate memory for the message string and copy it to the user space
+    msg->message = kmalloc(len, GFP_KERNEL);
+    if (!msg->message) {
+        printk(KERN_ALERT "Simple Driver: failed to allocate memory for message content\n");
+        kfree(msg);
+        return -ENOMEM;
+    }
+    if (copy_from_user(msg->message, buffer, len)) {
+        printk(KERN_ALERT "Simple Driver: failed to copy message from user\n");
+        kfree(msg->message);
+        kfree(msg);
+        return -EFAULT;
+    }
+
+    msg->size = len;
+    
+    list_add_tail(&msg->list, &message_list);
+
+    printk(KERN_INFO "Simple Driver: received %zu characters from the user\n", len);
+    return len;
 }
 
 /** @brief The device release function that is called whenever the device is closed/released by
