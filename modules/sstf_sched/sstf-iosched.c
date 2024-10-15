@@ -23,16 +23,11 @@ static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 }
 
 /* Esta função despacha o próximo bloco a ser lido. */
+/* TODO: implementar essa função */
 static int sstf_dispatch(struct request_queue *q, int force){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	char direction = 'R';
 	struct request *rq;
-
-	/* Aqui deve-se retirar uma requisição da fila e enviá-la para processamento.
-	 * Use como exemplo o driver noop-iosched.c. Veja como a requisição é tratada.
-	 *
-	 * Antes de retornar da função, imprima o sector que foi atendido.
-	 */
 
 	rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
 	if (rq) {
@@ -45,29 +40,20 @@ static int sstf_dispatch(struct request_queue *q, int force){
 	return 0;
 }
 
+/* Essa função adiciona a requisição recebida na fila de requisições. */
+/* TODO: implementar essa função */
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	char direction = 'R';
 
-	/* Aqui deve-se adicionar uma requisição na fila do driver.
-	 * Use como exemplo o driver noop-iosched.c
-	 *
-	 * Antes de retornar da função, imprima o sector que foi adicionado na lista.
-	 */
-
 	list_add_tail(&rq->queuelist, &nd->queue);
+	
 	printk(KERN_EMERG "[SSTF] add %c %llu\n", direction, blk_rq_pos(rq));
 }
 
 static int sstf_init_queue(struct request_queue *q, struct elevator_type *e){
 	struct sstf_data *nd;
 	struct elevator_queue *eq;
-
-	/* Implementação da inicialização da fila (queue).
-	 *
-	 * Use como exemplo a inicialização da fila no driver noop-iosched.c
-	 *
-	 */
 
 	eq = elevator_alloc(q, e);
 	if (!eq)
@@ -93,11 +79,6 @@ static void sstf_exit_queue(struct elevator_queue *e)
 {
 	struct sstf_data *nd = e->elevator_data;
 
-	/* Implementação da finalização da fila (queue).
-	 *
-	 * Use como exemplo o driver noop-iosched.c
-	 *
-	 */
 	BUG_ON(!list_empty(&nd->queue));
 	kfree(nd);
 }
