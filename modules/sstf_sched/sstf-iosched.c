@@ -10,11 +10,14 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/init.h>
+#include <linux/list.h>
 
 /* SSTF data structure. */
 struct sstf_data {
 	struct list_head queue;
 };
+
+int last_sector_read = 0;
 
 static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
@@ -23,20 +26,23 @@ static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 }
 
 /* Esta função despacha o próximo bloco a ser lido. */
-/* TODO: implementar essa função */
+/* Ela despacha o elemento na cabeça da fila recebida */
+/* Assume que a função de 'add' mantém a fila na ordem em que as requisições devem ser servidas. */
 static int sstf_dispatch(struct request_queue *q, int force){
 	struct sstf_data *nd = q->elevator->elevator_data;
-	char direction = 'R';
+	char direction;
 	struct request *rq;
 
 	rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
 	if (rq) {
 		list_del_init(&rq->queuelist);
 		elv_dispatch_sort(q, rq);
+		direction = (last_sector_read > blk_rq_pos(rq)) ? 'R' : 'L';
+		last_sector_read = blk_rq_pos(rq);
 		printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(rq));
-
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -44,11 +50,18 @@ static int sstf_dispatch(struct request_queue *q, int force){
 /* TODO: implementar essa função */
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
-	char direction = 'R';
+	struct request *req;
 
-	list_add_tail(&rq->queuelist, &nd->queue);
+	if (list_empty(&nd->queue)) {
+		list_add_tail(&rq->queuelist, &nd->queue);
+		return;
+	}
+
+	list_for_each_entry(req, &nd->queue, queuelist) {
+		// [TODO]: Implementar a lógica do exemplo aqui
+	}
 	
-	printk(KERN_EMERG "[SSTF] add %c %llu\n", direction, blk_rq_pos(rq));
+	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
 static int sstf_init_queue(struct request_queue *q, struct elevator_type *e){
