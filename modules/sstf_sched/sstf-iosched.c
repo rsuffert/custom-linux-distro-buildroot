@@ -53,7 +53,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct request *req;
 
 	if (list_empty(&nd->queue)) {
-		list_add_tail(&nd->queue, &rq->queuelist);
+		list_add_tail(&rq->queuelist, &nd->queue);
 		printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 		return;
 	}
@@ -66,7 +66,7 @@ static void sstf_add_request(struct request_queue *q, struct request *rq){
 		}
 	}
 
-	list_add_tail(&nd->queue, &rq->queuelist);
+	list_add_tail(&rq->queuelist, &nd->queue);
 	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
