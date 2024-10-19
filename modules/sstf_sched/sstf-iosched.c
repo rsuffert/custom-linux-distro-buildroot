@@ -51,15 +51,11 @@ static int sstf_dispatch(struct request_queue *q, int force){
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	struct request *req;
-
-	if (list_empty(&nd->queue)) {
-		list_add_tail(&rq->queuelist, &nd->queue);
-		printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
-		return;
-	}
+	unsigned long seek_time_cur_req, seek_time_new_req = abs(last_sector_read - blk_rq_pos(rq));
 
 	list_for_each_entry(req, &nd->queue, queuelist) {
-		if (abs(last_sector_read - blk_rq_pos(req)) < abs(last_sector_read - blk_rq_pos(rq))) {
+		seek_time_cur_req = abs(last_sector_read - blk_rq_pos(req));
+		if (seek_time_cur_req > seek_time_new_req) {
 			list_add(&rq->queuelist, &req->queuelist);
 			printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 			return;
