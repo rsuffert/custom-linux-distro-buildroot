@@ -59,8 +59,6 @@ static int sstf_dispatch(struct request_queue *q, int force){
 /* Essa função adiciona a requisição recebida na fila de requisições. */
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
-	struct request *req;
-	unsigned long seek_time_cur_req, seek_time_new_req = abs(last_sector_read - blk_rq_pos(rq));
 
 	// add the request to the unordered list (the right request will be picked at dispatch time)
 	list_add_tail(&rq->queuelist, &nd->queue);
