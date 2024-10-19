@@ -27,42 +27,44 @@ static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 }
 
 /* Esta função despacha o próximo bloco a ser lido. */
-/* Ela despacha o elemento na cabeça da fila recebida */
-/* Assume que a função de 'add' mantém a fila na ordem em que as requisições devem ser servidas. */
 static int sstf_dispatch(struct request_queue *q, int force){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	char direction;
-	struct request *rq;
+	struct request *closest_rq, *current_rq;
+	unsigned long closest_distance, current_distance;
+	
+	// assume closest request is the first one
+	closest_rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
+	if (!closest_rq) return 0;
+	closest_distance = abs(last_sector_read - blk_rq_pos(closest_rq));
 
-	rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
-	if (rq) {
-		list_del_init(&rq->queuelist);
-		elv_dispatch_sort(q, rq);
-		direction = (last_sector_read > blk_rq_pos(rq)) ? 'R' : 'L';
-		last_sector_read = blk_rq_pos(rq);
-		printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(rq));
-		return 1;
+	// check if any other request is closer
+	list_for_each_entry(current_rq, &nd->queue, queuelist) {
+		current_distance = abs(last_sector_read - blk_rq_pos(current_rq));
+		if (current_distance < closest_distance) {
+			closest_rq = current_rq;
+			closest_distance = current_distance;
+		}
 	}
 
-	return 0;
+	// dispatch closest request
+	list_del_init(&closest_rq->queuelist);
+	direction = (last_sector_read > blk_rq_pos(closest_rq)) ? 'R' : 'L';
+	last_sector_read = blk_rq_pos(closest_rq);
+	elv_dispatch_sort(q, closest_rq);
+	printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(closest_rq));
+	return 1;
 }
 
-/* Essa função adiciona a requisição recebida na fila de requisições de acordo com o algoritmo SSTF. */
+/* Essa função adiciona a requisição recebida na fila de requisições. */
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	struct request *req;
 	unsigned long seek_time_cur_req, seek_time_new_req = abs(last_sector_read - blk_rq_pos(rq));
 
-	list_for_each_entry(req, &nd->queue, queuelist) {
-		seek_time_cur_req = abs(last_sector_read - blk_rq_pos(req));
-		if (seek_time_cur_req > seek_time_new_req) {
-			list_add(&rq->queuelist, &req->queuelist);
-			printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
-			return;
-		}
-	}
-
+	// add the request to the unordered list (the right request will be picked at dispatch time)
 	list_add_tail(&rq->queuelist, &nd->queue);
+
 	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
