@@ -47,30 +47,26 @@ static int sstf_dispatch(struct request_queue *q, int force){
 	return 0;
 }
 
-/* Essa função adiciona a requisição recebida na fila de requisições. */
-/* TODO: implementar essa função */
+/* Essa função adiciona a requisição recebida na fila de requisições de acordo com o algoritmo SSTF. */
 static void sstf_add_request(struct request_queue *q, struct request *rq){
 	struct sstf_data *nd = q->elevator->elevator_data;
 	struct request *req;
-	short int added = 0;
 
 	if (list_empty(&nd->queue)) {
 		list_add_tail(&nd->queue, &rq->queuelist);
+		printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 		return;
 	}
 
 	list_for_each_entry(req, &nd->queue, queuelist) {
 		if (abs(last_sector_read - blk_rq_pos(req)) < abs(last_sector_read - blk_rq_pos(rq))) {
 			list_add(&rq->queuelist, &req->queuelist);
-			added = 1;
-			break;
+			printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
+			return;
 		}
 	}
 
-	if (!added) {
-		list_add_tail(&nd->queue, &rq->queuelist);
-	}
-	
+	list_add_tail(&nd->queue, &rq->queuelist);
 	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
