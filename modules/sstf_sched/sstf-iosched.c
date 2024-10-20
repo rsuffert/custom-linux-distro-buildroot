@@ -26,50 +26,43 @@ static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 	list_del_init(&next->queuelist);
 }
 
-/*
- * This function dispatches the next block to be read.
- * It assumes that the first element in the queue is the next to be dispatched.
- * The order of the queue must be maintained at the time of adding the request.
- */
+/* Esta função despacha o próximo bloco a ser lido. */
 static int sstf_dispatch(struct request_queue *q, int force){
 	struct sstf_data *nd = q->elevator->elevator_data;
-	int head = last_sector_read;
 	char direction;
-	struct request *rq;
+	struct request *closest_rq, *current_rq;
+	unsigned long closest_distance, current_distance;
 	
-	rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
-	if (!rq) return 0;
-	list_del_init(&rq->queuelist);
-	direction = (head > blk_rq_pos(rq)) ? 'R' : 'L';
-	last_sector_read = blk_rq_pos(rq);
-	elv_dispatch_sort(q, rq);
-	printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(rq));
-	return 1;
-}
+	// assume closest request is the first one
+	closest_rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
+	if (!closest_rq) return 0;
+	closest_distance = abs(last_sector_read - blk_rq_pos(closest_rq));
 
-/*
- * This function adds the received request to the request queue.
- * The function adds the request to the request queue according to the order established by the SSTF algorithm.
- */
-static void sstf_add_request(struct request_queue *q, struct request *rq){
-	struct sstf_data *nd = q->elevator->elevator_data;
-	int head = last_sector_read;
-	struct request *cur_req;
-	unsigned long seek_time_cur_req, seek_time_rq = abs(head - blk_rq_pos(rq));
-
-	// add the new request 'rq' immediately before the first request with a greater seek time in the queue
-	list_for_each_entry(cur_req, &nd->queue, queuelist) {
-		seek_time_cur_req = abs(head - blk_rq_pos(cur_req));
-		if (seek_time_cur_req > seek_time_rq) {
-			list_add_tail(&rq->queuelist, &cur_req->queuelist); // add 'rq' immediately before 'cur_req' in the queue
-			printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
-			return;
+	// check if any other request is closer
+	list_for_each_entry(current_rq, &nd->queue, queuelist) {
+		current_distance = abs(last_sector_read - blk_rq_pos(current_rq));
+		if (current_distance < closest_distance) {
+			closest_rq = current_rq;
+			closest_distance = current_distance;
 		}
 	}
 
-	// if there's no request with a greater seek time than 'rq' in the queue, add it to the end of the queue
-	// because it is the greatest seek time
+	// dispatch closest request
+	list_del_init(&closest_rq->queuelist);
+	direction = (last_sector_read > blk_rq_pos(closest_rq)) ? 'R' : 'L';
+	last_sector_read = blk_rq_pos(closest_rq);
+	elv_dispatch_sort(q, closest_rq);
+	printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(closest_rq));
+	return 1;
+}
+
+/* Essa função adiciona a requisição recebida na fila de requisições. */
+static void sstf_add_request(struct request_queue *q, struct request *rq){
+	struct sstf_data *nd = q->elevator->elevator_data;
+
+	// add the request to the unordered list (the right request will be picked at dispatch time)
 	list_add_tail(&rq->queuelist, &nd->queue);
+
 	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
