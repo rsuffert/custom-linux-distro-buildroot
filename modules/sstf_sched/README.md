@@ -12,3 +12,4 @@
 cd /bin
 ./sector_read
 ```
+7. (EXTRA) Executar o módulo do kernel por 1 linha dentro do QEMU  `modprobe sstf-iosched && echo sstf > /sys/block/sdb/queue/scheduler && cd /bin/ && ./sector_read` (se estiver tudo configurado corretamente deve-se executar sem problemas)
