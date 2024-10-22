@@ -19,6 +19,9 @@ struct sstf_data {
 };
 
 int last_sector_read = 0;
+#ifdef ENABLE_ACCUM
+int add_count,dsp_count=0;
+#endif
 
 static void sstf_merged_requests(struct request_queue *q, struct request *rq,
 				 struct request *next)
@@ -32,7 +35,11 @@ static int sstf_dispatch(struct request_queue *q, int force){
 	char direction;
 	struct request *closest_rq, *current_rq;
 	unsigned long closest_distance, current_distance;
-	
+	#ifdef ENABLE_ACCUM
+	if(add_count < 32){
+		return 0;
+	}
+	#endif
 	// assume closest request is the first one
 	closest_rq = list_first_entry_or_null(&nd->queue, struct request, queuelist);
 	if (!closest_rq) return 0;
@@ -52,6 +59,9 @@ static int sstf_dispatch(struct request_queue *q, int force){
 	direction = (last_sector_read > blk_rq_pos(closest_rq)) ? 'R' : 'L';
 	last_sector_read = blk_rq_pos(closest_rq);
 	elv_dispatch_sort(q, closest_rq);
+	#ifdef ENABLE_ACCUM
+	dsp_count++;
+	#endif
 	printk(KERN_EMERG "[SSTF] dsp %c %llu\n", direction, blk_rq_pos(closest_rq));
 	return 1;
 }
@@ -62,7 +72,9 @@ static void sstf_add_request(struct request_queue *q, struct request *rq){
 
 	// add the request to the unordered list (the right request will be picked at dispatch time)
 	list_add_tail(&rq->queuelist, &nd->queue);
-
+	#ifdef ENABLE_ACCUM
+	add_count++;
+	#endif
 	printk(KERN_EMERG "[SSTF] add %llu\n", blk_rq_pos(rq));
 }
 
