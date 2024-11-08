@@ -122,7 +122,10 @@ int main(int argc, char **argv)
 	for (int i=0; i<n_threads; i++)
 		pthread_join(threads[i], NULL);
 	
-	// TODO: printar o buffer antes e depois do pós-processamento
+	// show results
+	print("Threads finished executing!\n");
+	print_buffer_raw(buffer, buffer_count);
+	print_buffer_postprocessed(buffer, buffer_count);
 	
 	// release allocated resources
 	pthread_mutex_destroy(&mutex);
@@ -131,4 +134,55 @@ int main(int argc, char **argv)
 	free(thread_data);
 
 	return 0;
+}
+
+void print_buffer_raw(char* b, int size)
+{
+	for (int i=0; i<size; i++)
+		printf("%c", b[i]);
+	printf("\n");
+}
+
+void print_buffer_postprocessed(char* b, int size)
+{
+	char* trimmed_buffer;
+	int trimmed_count;
+
+	char current_char;
+	int count;
+
+
+	if (size == 0)
+	{
+		printf("No data to process\n");
+		return;
+	}
+
+	// Step 1: trim substrings of the same character
+	trimmed_buffer = (char*)malloc(size * sizeof(char));
+	trimmed_count = 0;
+
+	trimmed_buffer[trimmed_count++] = b[0];
+	for(int i=1; i<size; i++)
+	{
+		if (b[i] != b[i-1])
+			trimmed_buffer[trimmed_count++] = b[i];
+	}
+
+	// Step 2: Print the trimmed buffer
+	print_buffer_raw(trimmed_buffer, trimmed_count);
+
+	// Step 3: Count and print the number of occurrences of each character in the trimmed buffer
+	for (int i=0; i<trimmed_count; i++)
+	{
+		current_char = trimmed_buffer[i];
+		count = 0;
+		for (int j=0; j<size; j++)
+			if (b[j] == current_char)
+				count++;
+		printf("%c: %d\n", current_char, count);
+	}
+
+	// Step 4: Free the allocated memory
+	free(trimmed_buffer);
 }
