@@ -8,6 +8,8 @@
 
 #define SCHED_LOW_IDLE 7
 
+#define MAX_CHAR 26 // maximum number of characters in the alphabet
+
 char* buffer;
 int buffer_count;
 int buffer_size;
@@ -82,6 +84,22 @@ void print_buffer_raw(char* b, int size)
 	printf("\n");
 }
 
+void print_count_characters(const char *str) {
+    int count[MAX_CHAR] = {0};
+
+    // Iterate through the string and count each character
+    for (int i = 0; str[i] != '\0'; i++) {
+        count[str[i] - 'A']++;
+    }
+
+    // Print the count of each character
+    for (int i = 0; i < MAX_CHAR; i++) {
+        if (count[i] > 0) {
+            printf("%c = %d\n", 'A' + i, count[i]);
+        }
+    }
+}
+
 void print_buffer_postprocessed(char* b, int size)
 {
 	char* trimmed_buffer;
@@ -111,16 +129,8 @@ void print_buffer_postprocessed(char* b, int size)
 	// Step 2: Print the trimmed buffer
 	print_buffer_raw(trimmed_buffer, trimmed_count);
 
-	// Step 3: Count and print the number of occurrences of each character in the trimmed buffer
-	for (int i=0; i<trimmed_count; i++)
-	{
-		current_char = trimmed_buffer[i];
-		count = 0;
-		for (int j=0; j<size; j++)
-			if (b[j] == current_char)
-				count++;
-		printf("%c: %d\n", current_char, count);
-	}
+	// Step 3: Print the number of times each thread was scheduled
+	print_count_characters(trimmed_buffer);
 
 	// Step 4: Free the allocated memory
 	free(trimmed_buffer);
@@ -141,6 +151,12 @@ int main(int argc, char **argv)
 	buffer_size = atoi(argv[1]);
 	n_threads = atoi(argv[2]);
 	sched_policy_id = atoi(argv[3]);
+
+	if (n_threads > MAX_CHAR)
+	{
+		printf("Error: maximum number of threads is %d\n", MAX_CHAR);
+		return 0;
+	}
 
 	// print user selected information
 	printf("Allocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
