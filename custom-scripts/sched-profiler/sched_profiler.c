@@ -11,8 +11,8 @@
 #define MAX_CHAR 26 // number of characters in the alphabet
 
 void *run(void *data);
-void print_sched(int policy);
-int set_policy(pthread_t *thr, int newpolicy);
+bool print_sched(int policy);
+void set_policy(pthread_t *thr, int newpolicy);
 void print_buffer(char* buf, int size);
 void print_processed_buffer(char* buf, int size);
 
@@ -45,7 +45,15 @@ int main(int argc, char **argv)
 	// print user selected information
 	printf("Allocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
 	printf("Scheduling policy:\n");
-	print_sched(sched_policy_id);
+	if (!print_sched(sched_policy_id))
+	{
+		printf("error: scheduling policy %d is invalid\n", sched_policy_id);
+		printf(
+			"valid scheduling policies are: %d (LOW IDLE), %d (IDLE), %d (RR), %d (FIFO)\n",
+			SCHED_LOW_IDLE, SCHED_IDLE, SCHED_RR, SCHED_FIFO
+		);
+		return 1;
+	}
 
 	// allocate memory for the buffer
 	buffer_count = 0;
@@ -71,7 +79,7 @@ int main(int argc, char **argv)
 		pthread_join(threads[i], NULL);
 	
 	// show results
-	printf("Threads finished executing!\n");
+	printf("\nThreads finished executing!\n");
 	print_buffer(buffer, buffer_count);
 	print_processed_buffer(buffer, buffer_count);
 	
@@ -103,18 +111,22 @@ void *run(void *data)
 	return NULL;
 }
 
-void print_sched(int policy)
+bool print_sched(int policy)
 {
+	bool valid = true;
 	switch(policy){
-		case SCHED_FIFO:     printf("SCHED_FIFO\n");     break;
-		case SCHED_RR:       printf("SCHED_RR\n");       break;
-		case SCHED_IDLE:     printf("SCHED_IDLE\n");     break;
-		case SCHED_LOW_IDLE: printf("SCHED_LOW_IDLE\n"); break;
-		default:             printf("unknown\n");        break;
+		case SCHED_FIFO:     printf("\tSCHED_FIFO\n");     break;
+		case SCHED_RR:       printf("\tSCHED_RR\n");       break;
+		case SCHED_IDLE:     printf("\tSCHED_IDLE\n");     break;
+		case SCHED_LOW_IDLE: printf("\tSCHED_LOW_IDLE\n"); break;
+		default:
+			printf("\tunknown\n");
+			valid = false;
 	}
+	return valid;
 }
 
-int set_policy(pthread_t *thr, int newpolicy)
+void set_policy(pthread_t *thr, int newpolicy)
 {
 	int policy, ret, newpriority;
 	struct sched_param param;
@@ -132,8 +144,6 @@ int set_policy(pthread_t *thr, int newpolicy)
 		perror("perror(): ");
 
 	pthread_getschedparam(*thr, &policy, &param);
-
-	return 0;
 }
 
 void print_buffer(char* buf, int size)
