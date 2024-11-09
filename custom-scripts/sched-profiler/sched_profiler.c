@@ -6,10 +6,18 @@
 #include <linux/sched.h>
 #include <stdbool.h>
 
+// ======================================= CONSTANTS =======================================
+/*
+ * Low idle scheduling policy ID. This has been defined in the kernel.
+ */
 #define SCHED_LOW_IDLE 7
 
-#define MAX_CHAR 26 // number of characters in the alphabet
+/*
+ * Number of letters in the alphabet.
+ */
+#define MAX_CHARS 26
 
+// ======================================= PROTOTYPES =======================================
 /*
  * Function which is executed by each thread. It writes its ID (char) to the global buffer until it is full.
  * @param data the data passed to the thread.
@@ -31,15 +39,15 @@ bool print_sched(int policy);
 void set_policy(pthread_t *thr, int newpolicy);
 
 /*
- * Prints the given buffer.
+ * Prints the given buffer without any processing.
  * @param buf the buffer to be printed.
  * @param size the size of the buffer.
  */
-void print_buffer(char* buf, int size);
+void print_raw_buffer(char* buf, int size);
 
 /*
- * Processes and prints the given buffer. It trims substrings of the same character to only one character, prints it,
- * and then also prints how many times each character appeared in the trimmed substring.
+ * Prints the given buffer with post-processing. It trims substrings of the same character to only one character,
+ * prints it, and then also prints how many times each character appeared in the trimmed substring.
  * @param buf the buffer to be processed.
  * @size the size of the buffer.
  */
@@ -50,14 +58,40 @@ void print_processed_buffer(char* buf, int size);
  */
 void cleanup();
 
+// ======================================= GLOBAL VARS =======================================
+
+/*
+ * Variables received from the command line.
+ * The size of the global buffer the threads will write to, the number of threads, and the scheduling policy ID.
+ */
 int buffer_size, n_threads, sched_policy_id;
 
+/*
+ * The global buffer that the threads will write to.
+ */
 char* buffer;
+
+/*
+ * The number of characters written to the buffer (next available index).
+ */
 int buffer_count;
 
+/*
+ * The mutex used to synchronize access to the buffer.
+ */
 pthread_mutex_t mutex;
+
+/*
+ * The woker threads that will write to the buffer.
+ */
 pthread_t* threads;
-char* thread_data;
+
+/*
+ * A list of the data passed to each thread. Each element is is a char representing the ID of the thread.
+ */
+char* threads_data;
+
+// ======================================= FUNCTIONS =======================================
 
 int main(int argc, char** argv)
 {
@@ -73,15 +107,15 @@ int main(int argc, char** argv)
 	sched_policy_id = atoi(argv[3]);
 
 	// validate number of threads
-	if (n_threads > MAX_CHAR)
+	if (n_threads > MAX_CHARS)
 	{
-		printf("error: maximum number of threads is %d\n", MAX_CHAR);
+		printf("error: maximum number of threads is %d\n", MAX_CHARS);
 		cleanup();
 		return 1;
 	}
 
 	// print user selected information
-	printf("Allocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
+	printf("\nAllocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
 	printf("Scheduling policy:\n");
 	if (!print_sched(sched_policy_id))
 	{
@@ -100,7 +134,7 @@ int main(int argc, char** argv)
 
 	// allocate memory for the threads and the thread data
 	threads = (pthread_t*)malloc(n_threads * sizeof(pthread_t));
-	thread_data = (char*)malloc(n_threads * sizeof(char));
+	threads_data = (char*)malloc(n_threads * sizeof(char));
 
 	// initialize mutex
 	pthread_mutex_init(&mutex, NULL);
@@ -108,8 +142,8 @@ int main(int argc, char** argv)
 	// start threads
 	for (int i=0; i<n_threads; i++)
 	{
-		thread_data[i] = 'A' + i; // 'A' for first thread, 'B' for second etc.
-		pthread_create(&threads[i], NULL, run, &thread_data[i]);
+		threads_data[i] = 'A' + i; // 'A' for first thread, 'B' for second etc.
+		pthread_create(&threads[i], NULL, run, &threads_data[i]);
 		set_policy(&threads[i], sched_policy_id);
 	}
 
@@ -119,7 +153,7 @@ int main(int argc, char** argv)
 	
 	// show results
 	printf("\nThreads finished executing!\n");
-	print_buffer(buffer, buffer_count);
+	print_raw_buffer(buffer, buffer_count);
 	print_processed_buffer(buffer, buffer_count);
 	
 	cleanup();
@@ -148,7 +182,9 @@ void* run(void *data)
 bool print_sched(int policy)
 {
 	bool valid = true;
-	switch(policy){
+
+	switch(policy)
+	{
 		case SCHED_FIFO:     printf("\tSCHED_FIFO\n");     break;
 		case SCHED_RR:       printf("\tSCHED_RR\n");       break;
 		case SCHED_IDLE:     printf("\tSCHED_IDLE\n");     break;
@@ -157,22 +193,18 @@ bool print_sched(int policy)
 			printf("\tunknown\n");
 			valid = false;
 	}
+
 	return valid;
 }
 
 void set_policy(pthread_t* thr, int newpolicy)
 {
-	int policy, ret, newpriority;
+	int policy, ret;
 	struct sched_param param;
-
-	if (newpolicy == SCHED_LOW_IDLE || newpolicy == SCHED_IDLE)
-		newpriority = 0;
-	else
-		newpriority = 1;
 
 	pthread_getschedparam(*thr, &policy, &param);
 
-	param.sched_priority = newpriority;
+	param.sched_priority = newpolicy == SCHED_LOW_IDLE || newpolicy == SCHED_IDLE ? 0 : 1;
 	ret = pthread_setschedparam(*thr, newpolicy, &param);
 	if (ret != 0)
 		perror("perror(): ");
@@ -180,7 +212,7 @@ void set_policy(pthread_t* thr, int newpolicy)
 	pthread_getschedparam(*thr, &policy, &param);
 }
 
-void print_buffer(char* buf, int size)
+void print_raw_buffer(char* buf, int size)
 {
 	for (int i=0; i<size; i++)
 		printf("%c", buf[i]);
@@ -192,7 +224,7 @@ void print_processed_buffer(char* buf, int size)
 	char* trimmed_buf;
 	int trimmed_count;
 
-	// step 1: trim substrings of equal characters to only one char and print the result
+	// trim substrings of equal characters to only one char and print the result
 	trimmed_buf = (char*)malloc(size);
 	trimmed_count = 0;
 	for (int i=0; i<size; i++)
@@ -202,10 +234,10 @@ void print_processed_buffer(char* buf, int size)
 		while ((buf[i+1] == c) && (i+1 < size))
 			i++;
 	}
-	print_buffer(trimmed_buf, trimmed_count);
+	print_raw_buffer(trimmed_buf, trimmed_count);
 
-	// step 2: print the number of occurences of each character in the trimmed buffer
-	int occurences[MAX_CHAR] = {0};
+	// print the number of occurences of each character in the trimmed buffer
+	int occurences[MAX_CHARS] = {0};
 	for (int i=0; i<trimmed_count; i++)
 	{
 		char c = trimmed_buf[i];
@@ -214,7 +246,6 @@ void print_processed_buffer(char* buf, int size)
 	for (int i=0; i<n_threads; i++)
 		printf("%c: %d\n", 'A' + i, occurences[i]);
 
-	// step 3: free allocated resources
 	free(trimmed_buf);
 }
 
@@ -223,5 +254,5 @@ void cleanup()
 	pthread_mutex_destroy(&mutex);
 	free(buffer);
 	free(threads);
-	free(thread_data);
+	free(threads_data);
 }
