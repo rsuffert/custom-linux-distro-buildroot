@@ -25,18 +25,19 @@
 void* run(void *data);
 
 /*
- * Prints the scheduling policy from its ID, and returns whether or not the thread is recognized.
+ * Prints the scheduling policy from its ID, and returns whether or not the scheduling policy is recognized.
  * @param policy the ID of the policy.
  * @return true if the policy is recognized; false otherwise.
  */
-bool print_sched(int policy);
+bool print_validate_sched(int policy);
 
 /*
  * Sets the policy with the given ID to the given thread.
  * @param thr the thread whose policy is to be set.
  * @param newpolicy the ID of the policy to set to the thread.
+ * @return true if the policy was set successfully; false otherwise.
  */
-void set_policy(pthread_t *thr, int newpolicy);
+bool set_sched_policy(pthread_t *thr, int newpolicy);
 
 /*
  * Prints the given buffer without any processing.
@@ -117,11 +118,11 @@ int main(int argc, char** argv)
 	// print user selected information
 	printf("\nAllocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
 	printf("Scheduling policy:\n");
-	if (!print_sched(sched_policy_id))
+	if (!print_validate_sched(sched_policy_id))
 	{
 		printf("error: scheduling policy %d is invalid\n", sched_policy_id);
 		printf(
-			"valid scheduling policies are: %d (LOW IDLE), %d (IDLE), %d (RR), %d (FIFO)\n",
+			"valid scheduling policies are: %d (LOW IDLE), %d (IDLE), %d (RR), and %d (FIFO)\n",
 			SCHED_LOW_IDLE, SCHED_IDLE, SCHED_RR, SCHED_FIFO
 		);
 		cleanup();
@@ -144,7 +145,12 @@ int main(int argc, char** argv)
 	{
 		threads_data[i] = 'A' + i; // 'A' for first thread, 'B' for second etc.
 		pthread_create(&threads[i], NULL, run, &threads_data[i]);
-		set_policy(&threads[i], sched_policy_id);
+		if (!set_sched_policy(&threads[i], sched_policy_id))
+		{
+			printf("error: failed to set scheduling policy for thread %d\n", i);
+			cleanup();
+			return 1;
+		}
 	}
 
 	// wait for all threads to finish
@@ -153,7 +159,7 @@ int main(int argc, char** argv)
 	
 	// show results
 	printf("\nThreads finished executing!\n");
-	print_raw_buffer(buffer, buffer_count);
+	print_raw_buffer(buffer, buffer_count); // TODO: why are other threads writing at the very end for the SCHED_LOW_IDLE policy?
 	print_processed_buffer(buffer, buffer_count);
 	
 	cleanup();
@@ -179,7 +185,7 @@ void* run(void *data)
 	return NULL;
 }
 
-bool print_sched(int policy)
+bool print_validate_sched(int policy)
 {
 	bool valid = true;
 
@@ -197,19 +203,41 @@ bool print_sched(int policy)
 	return valid;
 }
 
-void set_policy(pthread_t* thr, int newpolicy)
+bool set_sched_policy(pthread_t* thr, int newpolicy)
 {
 	int policy, ret;
 	struct sched_param param;
 
-	pthread_getschedparam(*thr, &policy, &param);
+	// get the current sched policy and params of the thread
+	ret = pthread_getschedparam(*thr, &policy, &param);
+	if (ret != 0)
+	{
+		perror("pthread_getschedparam: ");
+		return false;
+	}
 
-	param.sched_priority = newpolicy == SCHED_LOW_IDLE || newpolicy == SCHED_IDLE ? 0 : 1;
+	printf("current policy:");
+	print_validate_sched(policy);
+
+	printf("setting to policy:");
+	print_validate_sched(newpolicy);
+
+	// set the sched priority based on the new policy
+	param.sched_priority = (newpolicy == SCHED_LOW_IDLE || newpolicy == SCHED_IDLE) ? 0 : 1;
+
+	// set the new sched policy and params for the thread
 	ret = pthread_setschedparam(*thr, newpolicy, &param);
 	if (ret != 0)
-		perror("perror(): ");
+	{
+		perror("pthread_setschedparam: ");
+		return false;
+	}
 
-	pthread_getschedparam(*thr, &policy, &param);
+	pthread_getschedparam(*thr, &policy, &param); // TODO: why isn't the policy being correctly set?
+	printf("new policy:");
+	print_validate_sched(policy);
+	
+	return true;
 }
 
 void print_raw_buffer(char* buf, int size)
