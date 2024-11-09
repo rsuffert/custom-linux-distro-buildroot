@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 
 	// print user selected information
 	printf("\nAllocating buffer of size %d for %d threads to write to\n", buffer_size, n_threads);
-	printf("Scheduling policy:\n");
+	printf("Selected scheduling policy: ");
 	if (!print_validate_sched(sched_policy_id))
 	{
 		printf("error: scheduling policy %d is invalid\n", sched_policy_id);
@@ -128,6 +128,7 @@ int main(int argc, char** argv)
 		cleanup();
 		return 1;
 	}
+	printf("\n");
 
 	// allocate memory for the buffer
 	buffer_count = 0;
@@ -158,7 +159,7 @@ int main(int argc, char** argv)
 		pthread_join(threads[i], NULL);
 	
 	// show results
-	printf("\nThreads finished executing!\n");
+	printf("================ Threads finished executing! ================\n");
 	print_raw_buffer(buffer, buffer_count); // TODO: why are other threads writing at the very end for the SCHED_LOW_IDLE policy?
 	print_processed_buffer(buffer, buffer_count);
 	
@@ -191,12 +192,12 @@ bool print_validate_sched(int policy)
 
 	switch(policy)
 	{
-		case SCHED_FIFO:     printf("\tSCHED_FIFO\n");     break;
-		case SCHED_RR:       printf("\tSCHED_RR\n");       break;
-		case SCHED_IDLE:     printf("\tSCHED_IDLE\n");     break;
-		case SCHED_LOW_IDLE: printf("\tSCHED_LOW_IDLE\n"); break;
+		case SCHED_FIFO:     printf("SCHED_FIFO\n");     break;
+		case SCHED_RR:       printf("SCHED_RR\n");       break;
+		case SCHED_IDLE:     printf("SCHED_IDLE\n");     break;
+		case SCHED_LOW_IDLE: printf("SCHED_LOW_IDLE\n"); break;
 		default:
-			printf("\tunknown\n");
+			printf("unknown (%d)\n", policy);
 			valid = false;
 	}
 
@@ -208,6 +209,9 @@ bool set_sched_policy(pthread_t* thr, int newpolicy)
 	int policy, ret;
 	struct sched_param param;
 
+	printf("setting thread %ld to policy: ", *thr);
+	print_validate_sched(newpolicy);
+
 	// get the current sched policy and params of the thread
 	ret = pthread_getschedparam(*thr, &policy, &param);
 	if (ret != 0)
@@ -216,11 +220,8 @@ bool set_sched_policy(pthread_t* thr, int newpolicy)
 		return false;
 	}
 
-	printf("current policy:");
+	printf("current policy: ");
 	print_validate_sched(policy);
-
-	printf("setting to policy:");
-	print_validate_sched(newpolicy);
 
 	// set the sched priority based on the new policy
 	param.sched_priority = (newpolicy == SCHED_LOW_IDLE || newpolicy == SCHED_IDLE) ? 0 : 1;
@@ -234,8 +235,9 @@ bool set_sched_policy(pthread_t* thr, int newpolicy)
 	}
 
 	pthread_getschedparam(*thr, &policy, &param); // TODO: why isn't the policy being correctly set?
-	printf("new policy:");
+	printf("new policy: ");
 	print_validate_sched(policy);
+	printf("\n");
 	
 	return true;
 }
@@ -259,7 +261,7 @@ void print_processed_buffer(char* buf, int size)
 	{
 		char c = buf[i];
 		trimmed_buf[trimmed_count++] = c;
-		while ((buf[i+1] == c) && (i+1 < size))
+		while ((buf[i+1] == c) && (i+1 < size)) // skip the sequence of equal characters
 			i++;
 	}
 	print_raw_buffer(trimmed_buf, trimmed_count);
