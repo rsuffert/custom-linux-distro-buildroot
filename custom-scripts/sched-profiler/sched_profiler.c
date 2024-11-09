@@ -10,25 +10,62 @@
 
 #define MAX_CHAR 26 // number of characters in the alphabet
 
-void *run(void *data);
+/*
+ * Function which is executed by each thread. It writes its ID (char) to the global buffer until it is full.
+ * @param data the data passed to the thread.
+ */
+void* run(void *data);
+
+/*
+ * Prints the scheduling policy from its ID, and returns whether or not the thread is recognized.
+ * @param policy the ID of the policy.
+ * @return true if the policy is recognized; false otherwise.
+ */
 bool print_sched(int policy);
+
+/*
+ * Sets the policy with the given ID to the given thread.
+ * @param thr the thread whose policy is to be set.
+ * @param newpolicy the ID of the policy to set to the thread.
+ */
 void set_policy(pthread_t *thr, int newpolicy);
+
+/*
+ * Prints the given buffer.
+ * @param buf the buffer to be printed.
+ * @param size the size of the buffer.
+ */
 void print_buffer(char* buf, int size);
+
+/*
+ * Processes and prints the given buffer. It trims substrings of the same character to only one character, prints it,
+ * and then also prints how many times each character appeared in the trimmed substring.
+ * @param buf the buffer to be processed.
+ * @size the size of the buffer.
+ */
 void print_processed_buffer(char* buf, int size);
 
+/*
+ * Releases any resources globally allocated in the program.
+ */
+void cleanup();
+
+int buffer_size, n_threads, sched_policy_id;
+
 char* buffer;
-int buffer_count, buffer_size, n_threads, sched_policy_id;
+int buffer_count;
+
 pthread_mutex_t mutex;
+pthread_t* threads;
+char* thread_data;
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-	pthread_t *threads;
-	char* thread_data;
-
 	// get command line arguments
 	if (argc != 4)
 	{
 		printf("usage: %s <buffer_size> <n_threads> <sched_policy_id>\n", argv[0]);
+		cleanup();
 		return 1;
 	}
 	buffer_size = atoi(argv[1]);
@@ -39,6 +76,7 @@ int main(int argc, char **argv)
 	if (n_threads > MAX_CHAR)
 	{
 		printf("error: maximum number of threads is %d\n", MAX_CHAR);
+		cleanup();
 		return 1;
 	}
 
@@ -52,6 +90,7 @@ int main(int argc, char **argv)
 			"valid scheduling policies are: %d (LOW IDLE), %d (IDLE), %d (RR), %d (FIFO)\n",
 			SCHED_LOW_IDLE, SCHED_IDLE, SCHED_RR, SCHED_FIFO
 		);
+		cleanup();
 		return 1;
 	}
 
@@ -83,16 +122,11 @@ int main(int argc, char **argv)
 	print_buffer(buffer, buffer_count);
 	print_processed_buffer(buffer, buffer_count);
 	
-	// release allocated resources
-	pthread_mutex_destroy(&mutex);
-	free(buffer);
-	free(threads);
-	free(thread_data);
-
+	cleanup();
 	return 0;
 }
 
-void *run(void *data)
+void* run(void *data)
 {
 	char id = *((char*)data);
 	bool exit = false;
@@ -126,7 +160,7 @@ bool print_sched(int policy)
 	return valid;
 }
 
-void set_policy(pthread_t *thr, int newpolicy)
+void set_policy(pthread_t* thr, int newpolicy)
 {
 	int policy, ret, newpriority;
 	struct sched_param param;
@@ -182,4 +216,12 @@ void print_processed_buffer(char* buf, int size)
 
 	// step 3: free allocated resources
 	free(trimmed_buf);
+}
+
+void cleanup()
+{
+	pthread_mutex_destroy(&mutex);
+	free(buffer);
+	free(threads);
+	free(thread_data);
 }
