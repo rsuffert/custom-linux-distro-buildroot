@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,6 +93,11 @@ pthread_t* threads;
  */
 char* threads_data;
 
+/*
+ * Barrier to synchronize the start of the threads.
+ */
+pthread_barrier_t barrier;
+
 // ======================================= FUNCTIONS =======================================
 
 int main(int argc, char** argv)
@@ -141,6 +147,9 @@ int main(int argc, char** argv)
 	// initialize mutex
 	pthread_mutex_init(&mutex, NULL);
 
+	// initialize barrier
+	pthread_barrier_init(&barrier, NULL, n_threads + 1); // + 1 because the main thread will also wait
+
 	// start threads
 	for (int i=0; i<n_threads; i++)
 	{
@@ -153,6 +162,9 @@ int main(int argc, char** argv)
 			return 1;
 		}
 	}
+
+	// wait for all threads to start
+	pthread_barrier_wait(&barrier);
 
 	// wait for all threads to finish
 	for (int i=0; i<n_threads; i++)
@@ -169,6 +181,9 @@ int main(int argc, char** argv)
 
 void* run(void *data)
 {
+	// wait for all threads to start
+	pthread_barrier_wait(&barrier);
+
 	char id = *((char*)data);
 	bool exit = false;
 	while (!exit)
@@ -282,6 +297,7 @@ void print_processed_buffer(char* buf, int size)
 void cleanup()
 {
 	pthread_mutex_destroy(&mutex);
+	pthread_barrier_destroy(&barrier);
 	free(buffer);
 	free(threads);
 	free(threads_data);
