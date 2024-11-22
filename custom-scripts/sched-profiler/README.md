@@ -34,21 +34,24 @@ cd /bin
 
 ## Exemplos de execuções
 
-Para cada uma das políticas de escalonamento suportadas, será fornecido um exemplo de execução e output com 2, 4 e 8 threads.
+Para cada uma das políticas de escalonamento suportadas, será fornecido um exemplo de execução e output com 2, 4 e 8 threads. Uma observação a se fazer em relação ao output das execuções é que foram impressos o buffer não resumido e o buffer resumido. No caso do buffer não resumido, a representação sai incompleta, pois excede o tamanho de representação configurado no sistema. Por outro lado, o buffer resumido sempre entrega uma representação fiel da alternância das threads.
 
 ### `SCHED_FIFO`
 
 Exemplo com 2 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 2 1
 ================ Threads finished executing! ================
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 A
 A: 1
 B: 0
+```
 
 Exemplo com 4 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 4 1
 ================ Threads finished executing! ================
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -57,9 +60,11 @@ A: 1
 B: 0
 C: 0
 D: 0
+```
 
 Exemplo com 8 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 8 1
 ================ Threads finished executing! ================
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -72,57 +77,70 @@ E: 0
 F: 0
 G: 0
 H: 0
+```
 
 ### `SCHED_RR`
 
-Exemplo com 2 threads e Buffer de 1000000 de posições:
+Exemplo com 2 threads e Buffer de 1500000 de posições:
 
+```bash
 ./sched_profiler 1000000 2 2
 ================ Threads finished executing! ================
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 AB
 A: 1
 B: 1
+```
 
-Exemplo com 4 threads e Buffer de 1000000 de posições:
+Exemplo com 4 threads e Buffer de 15000000 de posições:
 
-./sched_profiler 1000000 4 2
+```bash
+./sched_profiler 15000000 4 2
 ================ Threads finished executing! ================
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB
-AB
-A: 1
-B: 1
-C: 0
-D: 0
+ABDBADBCABAB
+A: 4
+B: 5
+C: 1
+D: 2
+```
 
-Exemplo com 8 threads e Buffer de 1000000 de posições:
+Exemplo com 8 threads e Buffer de 20000000 de posições:
 
-./sched_profiler 1000000 8 2
+```bash
+./sched_profiler 20000000 4 2
 ================ Threads finished executing! ================
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-A
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF
+ABDBDBHCHECHGFHF
 A: 1
-B: 0
-C: 0
-D: 0
-E: 0
-F: 0
-G: 0
-H: 0
+B: 3
+C: 2
+D: 2
+E: 1
+F: 2
+G: 1
+H: 4
+```
 
 ### `SCHED_IDLE`
 
+
 Exemplo com 2 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 2 5
+================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 BABABABABABABABAB
 A: 8
 B: 9
+```
 
 Exemplo com 4 threads e Buffer de 1000000 de posições:
 
-./sched_profiler 1000000 4 5
+```bash
+./sched_profiler 100000 4 5
 ================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA
 BCABABCDBACDBACDBACA
@@ -130,9 +148,11 @@ A: 6
 B: 6
 C: 5
 D: 3
+```
 
 Exemplo com 8 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 8 5
 ================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBC
@@ -145,20 +165,24 @@ E: 1
 F: 3
 G: 3
 H: 3
+```
 
 ### `SCHED_LOW_IDLE`
 
 Exemplo com 2 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 2 7
 ================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 BABABABABABABAB
 A: 7
 B: 8
+```
 
 Exemplo com 4 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 4 7
 ================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBC
@@ -167,9 +191,11 @@ A: 3
 B: 5
 C: 5
 D: 3
+```
 
 Exemplo com 8 threads e Buffer de 1000000 de posições:
 
+```bash
 ./sched_profiler 1000000 8 7
 ================ Threads finished executing! ================
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBD
@@ -182,3 +208,4 @@ E: 3
 F: 2
 G: 2
 H: 2
+```
